@@ -1,0 +1,52 @@
+name: Preview or update Pulumi app habbo/rest-api/staging
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '**/*'
+
+env:
+  PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+  PULUMI_STACK_NAME: habbo/rest-api/staging
+  PULUMI_WORKING_DIRECTORY: .
+
+jobs:
+  pulumi:
+    name: Pulumi
+    runs-on: ubuntu-latest
+    steps:
+      - id: auth
+        name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v0.4.0
+        with:
+          credentials_json: ${{ secrets.GOOGLE_CREDENTIALS }}
+      - name: Turnstyle
+        if: ${{ github.event_name == 'push' }}
+        uses: softprops/turnstyle@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/checkout@v2
+
+      - name: Use Node.js
+        uses: actions/setup-node@v1
+        with:
+          node-version: 16.x
+
+      - name: Install Pulumi CLI
+        uses: pulumi/action-install-pulumi-cli@v1.0.1
+
+      - name: Restore npm dependencies
+        run: |
+          npm --prefix $PULUMI_WORKING_DIRECTORY ci
+          # If you are using yarn instead with Pulumi, comment the above line and uncomment the below line.
+          # yarn install --cwd $PULUMI_WORKING_DIRECTORY
+
+      - name: PR previews
+        run: pulumi preview -s $PULUMI_STACK_NAME --cwd $PULUMI_WORKING_DIRECTORY
+        if: ${{ github.event_name == 'pull_request' }}
+
+      - name: Apply infrastructure update
+        run: pulumi update --yes -s $PULUMI_STACK_NAME --cwd $PULUMI_WORKING_DIRECTORY
+        if: ${{ github.event_name == 'push' }}
