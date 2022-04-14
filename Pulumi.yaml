@@ -1,0 +1,3 @@
+name: rest-api
+runtime: nodejs
+description: REST Interface of Habbo.Furniture
