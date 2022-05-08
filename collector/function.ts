@@ -11,34 +11,22 @@ const collectorArchive = new gcp.storage.BucketObject("collector-archive", {
   source: new pulumi.asset.FileArchive(collectorDirectory),
 });
 
-const collector = new gcp.cloudfunctionsv2.Function("rest-api-collector", {
-  location: region,
-  description: "Collects furniture information from pubsub queue",
-  buildConfig: {
-    runtime: "nodejs16",
-    entryPoint: "collect",
-    source: {
-      storageSource: {
-        bucket: collectorBucket.name,
-        object: collectorArchive.name
-      }
-    }
-  },
-  serviceConfig: {
-    maxInstanceCount: 3,
-    minInstanceCount: 1,
-    availableMemory: "256M",
-    timeoutSeconds: 300,
-    ingressSettings: "ALLOW_INTERNAL_ONLY",
-    allTrafficOnLatestRevision: true,
-  },
-  eventTrigger: {
-    triggerRegion: region,
-    eventType: "providers/cloud.pubsub/eventTypes/topic.publish",
-    pubsubTopic: extractorStack.getOutput('pubsub').apply(output => output.id),
-    retryPolicy: "RETRY_POLICY_RETRY",
-  },
+const collector = new gcp.cloudfunctions.Function("rest-api-collector", {
+  runtime: "nodejs16",
+  entryPoint: "collector",
+  sourceArchiveBucket: collectorArchive.bucket,
+  sourceArchiveObject: collectorArchive.name,
+  triggerHttp: true,
+  region,
+  ingressSettings: "ALLOW_INTERNAL_ONLY"
 });
+
+/*new gcp.pubsub.Subscription("collector-subscription", {
+  topic: extractorStack.getOutput('pubsub').apply((topic: gcp.pubsub.Topic) => topic.urn),
+  pushConfig: {
+    pushEndpoint: collector.httpsTriggerUrl
+  }
+});*/
 
 
 export { collector }
