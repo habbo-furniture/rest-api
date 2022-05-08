@@ -34,7 +34,7 @@ const collector = new gcp.cloudfunctionsv2.Function("rest-api-collector", {
   },
   eventTrigger: {
     triggerRegion: region,
-    eventType: "google.cloud.pubsub.topic.v1.messagePublished",
+    eventType: "providers/cloud.pubsub/eventTypes/topic.publish",
     pubsubTopic: extractorStack.getOutput('pubsub').apply(output => output.id),
     retryPolicy: "RETRY_POLICY_RETRY",
   },
